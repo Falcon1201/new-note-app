@@ -1,5 +1,5 @@
 pipeline {
-    agent any
+    agent { label 'dev'}
 
     environment {
         IMAGE_NAME = 'new-note-app:latest'
@@ -10,7 +10,8 @@ pipeline {
     stages {
         stage ('Checkout') {
             steps {
-                git branch: 'main', url: 'https://github.com/Falcon1201/new-note-app.git'
+                git branch: 'main',
+                url: 'https://github.com/Falcon1201/new-note-app.git'
             }
         }
 
@@ -23,42 +24,41 @@ pipeline {
             }
         }
 
-        stage ('Stopping Old Containers') {
+        stage ('Stopping & Removing Old Containers') {
             steps {
                 sh '''
-                echo "===== Stopping Old Containers ====="
+                echo "===== Stopping & Removing old containers ====="
                 docker stop $CONTAINER_NAME || true
                 docker rm $CONTAINER_NAME || true
                 '''
             }
         }
 
-        stage ('Run Container') {
+        stage ('Run Containers') {
             steps {
                 sh '''
                 echo "===== Running Container ====="
-                docker run -d --name $CONTAINER_NAME -p $PORT:80 -v notes-data:/data $IMAGE_NAME
+                docker run -d --name $CONTAINER_NAME \
+                -p $PORT:80 \
+                -v notes-data:/data \
+                $IMAGE_NAME
                 '''
             }
         }
 
-        stage ('Verify') {
+        stage ('Verification') {
             steps {
                 sh '''
-                echo "===== Verifing Deployment ====="
+                echo "===== Verifying Deployment ====="
                 sleep 5
-                curl -s http://3.109.62.237:$PORT | head -n 20
+                curl -sf http://localhost:$PORT | head -n 20
                 '''
             }
         }
     }
 
     post {
-        success {
-            echo "Notes App deployed successfully!: http://3.109.62.237:$PORT"
-        }
-        failure {
-            echo "Deployment failed. Please check the logs for details."
-        }
+        success { echo "Notes App deployed successfully!: http://localhost:$PORT" }
+        failure { echo "Deployment failed! Please check the logs for more details." }
     }
 }
